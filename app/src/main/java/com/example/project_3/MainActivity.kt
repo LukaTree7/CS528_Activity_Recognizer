@@ -6,6 +6,7 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -49,80 +50,65 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun MotionDetectionScreen(paddingValues: PaddingValues){
-    //to access hardware device of andriod
+fun MotionDetectionScreen(paddingValues: PaddingValues) {
     val context = LocalContext.current
-
-    //trigger sensorManager with the help of above context
-    // type cast it as sensorManager
     val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+    val stepCounterSensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
 
-    // variable to count number of steps ? for null or not for the number of steps
-
-    val stepCounterSensor: Sensor? =sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
-
-    // saves the number of steps taken
     var stepCount by remember { mutableStateOf(0f) }
-
-    // stores current activity
     var currentActivity by remember { mutableStateOf("Idle") }
-
-    // var to know when a particular activity starts the timing
     var activityStartTime by remember { mutableStateOf(System.currentTimeMillis()) }
-
-    // var to save previous number of steps and last time stamp taken before any activity starts(new one)
-    var lastStepCount  by remember { mutableStateOf(0f) }
+    var lastStepCount by remember { mutableStateOf(0f) }
     var lastTimestamp by remember { mutableStateOf(0L) }
 
+    if (stepCounterSensor == null) {
+        Toast.makeText(context, "Step counter sensor not available!", Toast.LENGTH_SHORT).show()
+    }
+
     DisposableEffect(stepCounterSensor) {
-        // a variable for when a sensor is triggerd
-        val sensorListener = object : SensorEventListener{
+        val sensorListener = object : SensorEventListener {
             override fun onSensorChanged(event: SensorEvent?) {
-                //sensorChange is basically when a method is called for any change in the sensor
-                // or when the sensor has been triggered
-                event?.let{
+                event?.let {
                     val newSteps = it.values[0]
                     val currentTime = System.currentTimeMillis()
 
                     stepCount = newSteps
 
-                    if(lastTimestamp != 0L){
-                        val deltaSteps = newSteps-lastStepCount
-                        val deltaTimeSec = (currentTime-lastTimestamp)/1000
+                    if (lastTimestamp != 0L) {
+                        val deltaSteps = newSteps - lastStepCount
+                        val deltaTimeSec = (currentTime - lastTimestamp) / 1000
 
-                        if(deltaTimeSec>0){
-                            val cadence = deltaSteps/deltaTimeSec
-                            val newStatus = when{
+                        if (deltaTimeSec > 0) {
+                            val cadence = deltaSteps / deltaTimeSec
+                            val newStatus = when {
                                 cadence.toDouble() == 0.0 -> "Idle"
-                                cadence > 2.5 -> "Runnig"
+                                cadence > 2.5 -> "Running"
                                 cadence > 5 -> "Vehicle"
                                 else -> "Walking"
                             }
-                            if(newStatus!=currentActivity){
-                                // if there is change in activity
+                            if (newStatus != currentActivity) {
                                 val durationMillis = currentTime - activityStartTime
-                                val totalSeconds = (durationMillis)/1000.toInt() //converts milli sec to sec
-                                //convert to mins and sec
-                                val minutes = totalSeconds/60
+                                val totalSeconds = (durationMillis / 1000).toInt()
+                                val minutes = totalSeconds / 60
                                 val seconds = totalSeconds % 60
-                                val durationString = if(minutes > 0){
-                                    "$minutes min,$seconds sec "
-                                }else{
+                                val durationString = if (minutes > 0) {
+                                    "$minutes min, $seconds sec"
+                                } else {
                                     "$seconds sec"
                                 }
 
-                                if(activityStartTime !=currentTime){
-                                    Toast.makeText(context,
+                                if (activityStartTime != currentTime) {
+                                    Toast.makeText(
+                                        context,
                                         "You have just ${currentActivity.lowercase()} for $durationString",
-                                        Toast.LENGTH_SHORT).show()
+                                        Toast.LENGTH_SHORT
+                                    ).show()
                                 }
 
                                 currentActivity = newStatus
                                 activityStartTime = currentTime
-
                             }
                         }
-
                     }
 
                     lastStepCount = newSteps
@@ -131,34 +117,32 @@ fun MotionDetectionScreen(paddingValues: PaddingValues){
                 }
             }
 
-            override fun onAccuracyChanged(p0: Sensor?, p1: Int) {
-                TODO("Not yet implemented")
+            override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
+                Log.d("Sensor", "Accuracy changed: $accuracy")
             }
-
         }
 
-        stepCounterSensor?.let{
-            // register sensor
-            sensorManager.registerListener(sensorListener, it,SensorManager.SENSOR_DELAY_NORMAL)
+        stepCounterSensor?.let {
+            sensorManager.registerListener(sensorListener, it, SensorManager.SENSOR_DELAY_NORMAL)
         }
         onDispose {
-            // unregister sensor
             sensorManager.unregisterListener(sensorListener)
         }
     }
-    Column (
+
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(paddingValues),
         verticalArrangement = Arrangement.SpaceEvenly,
         horizontalAlignment = Alignment.CenterHorizontally
-    ){
+    ) {
         Text(
             text = "Steps taken since app started: ${stepCount.toInt()}", fontSize = 25.sp
         )
 
-        when(currentActivity){
-            "Idle" ->{
+        when (currentActivity) {
+            "Idle" -> {
                 Image(
                     painter = painterResource(id = R.drawable.still),
                     contentDescription = "Idle",
@@ -170,8 +154,7 @@ fun MotionDetectionScreen(paddingValues: PaddingValues){
                     fontSize = 25.sp
                 )
             }
-
-            "Walking" ->{
+            "Running" -> {
                 Image(
                     painter = painterResource(id = R.drawable.running),
                     contentDescription = "Running",
@@ -183,8 +166,7 @@ fun MotionDetectionScreen(paddingValues: PaddingValues){
                     fontSize = 25.sp
                 )
             }
-
-            "Walking" ->{
+            "Walking" -> {
                 Image(
                     painter = painterResource(id = R.drawable.walking),
                     contentDescription = "Walking",
@@ -198,6 +180,5 @@ fun MotionDetectionScreen(paddingValues: PaddingValues){
             }
         }
     }
-
 }
 
