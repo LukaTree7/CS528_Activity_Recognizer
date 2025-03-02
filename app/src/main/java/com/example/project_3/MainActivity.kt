@@ -13,14 +13,18 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,9 +37,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.project_3.ui.theme.Project_3Theme
-import com.google.android.gms.maps.model.LatLng
-import androidx.compose.foundation.layout.*
-import androidx.compose.runtime.*
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
@@ -44,9 +45,18 @@ import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.model.CameraPosition
-import com.google.maps.android.compose.*
+import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.rememberCameraPositionState
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 
 class MainActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -54,6 +64,31 @@ class MainActivity : ComponentActivity() {
                 MotionDetectionScreen(PaddingValues(10.dp))
             }
         }
+
+        if (checkActivityRecognitionPermission()) {
+            //
+        } else {
+            requestActivityRecognitionPermission()
+        }
+    }
+
+    private fun checkActivityRecognitionPermission(): Boolean {
+        return ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACTIVITY_RECOGNITION
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun requestActivityRecognitionPermission() {
+        ActivityCompat.requestPermissions(
+            this,
+            arrayOf(Manifest.permission.ACTIVITY_RECOGNITION),
+            REQUEST_ACTIVITY_RECOGNITION_PERMISSION
+        )
+    }
+
+    companion object {
+        private const val REQUEST_ACTIVITY_RECOGNITION_PERMISSION = 1001
     }
 }
 
@@ -148,13 +183,13 @@ fun MotionDetectionScreen(paddingValues: PaddingValues) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "Visit to Campus Center geoFence: ${visitCC.toInt()}", fontSize = 25.sp
+            text = "Visit to Campus Center geoFence: ${visitCC.toInt()}", fontSize = 15.sp
         )
         Text(
-            text = "Visit to Unit Hall geoFence: ${visitUH.toInt()}", fontSize = 25.sp
+            text = "Visit to Unit Hall geoFence: ${visitUH.toInt()}", fontSize = 15.sp
         )
         Text(
-            text = "Steps taken since app started: ${stepCount.toInt()}", fontSize = 25.sp
+            text = "Steps taken since app started: ${stepCount.toInt()}", fontSize = 15.sp
         )
 
         Box(
@@ -175,7 +210,7 @@ fun MotionDetectionScreen(paddingValues: PaddingValues) {
                 )
                 Text(
                     text = "You are $currentActivity",
-                    fontSize = 25.sp
+                    fontSize = 20.sp
                 )
             }
             "Running" -> {
@@ -189,7 +224,7 @@ fun MotionDetectionScreen(paddingValues: PaddingValues) {
                 )
                 Text(
                     text = "You are $currentActivity.",
-                    fontSize = 25.sp
+                    fontSize = 20.sp
                 )
             }
             "Walking" -> {
@@ -203,7 +238,7 @@ fun MotionDetectionScreen(paddingValues: PaddingValues) {
                 )
                 Text(
                     text = "You are $currentActivity.",
-                    fontSize = 25.sp
+                    fontSize = 20.sp
                 )
             }
             "In Vehicle" -> {
@@ -217,7 +252,7 @@ fun MotionDetectionScreen(paddingValues: PaddingValues) {
                 )
                 Text(
                     text = "You are $currentActivity.",
-                    fontSize = 25.sp
+                    fontSize = 20.sp
                 )
             }
         }
