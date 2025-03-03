@@ -55,6 +55,13 @@ import android.content.pm.PackageManager
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 
+import android.annotation.SuppressLint
+import android.app.PendingIntent
+import android.content.BroadcastReceiver
+import android.content.Intent
+import com.google.android.gms.location.*
+import com.google.maps.android.compose.rememberCameraPositionState
+
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -168,11 +175,16 @@ fun MotionDetectionScreen(paddingValues: PaddingValues) {
         }
 
         stepCounterSensor?.let {
-            sensorManager.registerListener(sensorListener, it, SensorManager.SENSOR_DELAY_NORMAL)
+            sensorManager.registerListener(sensorListener, it, SensorManager.SENSOR_DELAY_FASTEST)
         }
         onDispose {
             sensorManager.unregisterListener(sensorListener)
         }
+    }
+
+//     Add Geofence
+    LaunchedEffect(Unit) {
+        addGeofences(context, visitCC, visitUH)
     }
 
     Column(
@@ -193,7 +205,7 @@ fun MotionDetectionScreen(paddingValues: PaddingValues) {
         )
 
         Box(
-            modifier = Modifier.height(350.dp)
+            modifier = Modifier.height(300.dp)
         ) {
             MapView()
         }
@@ -204,7 +216,7 @@ fun MotionDetectionScreen(paddingValues: PaddingValues) {
                     painter = painterResource(id = R.drawable.still),
                     contentDescription = "Still",
                     modifier = Modifier
-                        .size(350.dp)
+                        .size(300.dp)
                         .aspectRatio(1f),
                     contentScale = ContentScale.Crop
                 )
@@ -218,7 +230,7 @@ fun MotionDetectionScreen(paddingValues: PaddingValues) {
                     painter = painterResource(id = R.drawable.running),
                     contentDescription = "Running",
                     modifier = Modifier
-                        .size(350.dp)
+                        .size(300.dp)
                         .aspectRatio(1f),
                     contentScale = ContentScale.Crop
                 )
@@ -232,7 +244,7 @@ fun MotionDetectionScreen(paddingValues: PaddingValues) {
                     painter = painterResource(id = R.drawable.walking),
                     contentDescription = "Walking",
                     modifier = Modifier
-                        .size(350.dp)
+                        .size(300.dp)
                         .aspectRatio(1f),
                     contentScale = ContentScale.Crop
                 )
@@ -246,7 +258,7 @@ fun MotionDetectionScreen(paddingValues: PaddingValues) {
                     painter = painterResource(id = R.drawable.driving),
                     contentDescription = "In Vehicle",
                     modifier = Modifier
-                        .size(350.dp)
+                        .size(300.dp)
                         .aspectRatio(1f),
                     contentScale = ContentScale.Crop
                 )
@@ -326,6 +338,100 @@ fun MapView() {
                     title = if (location == defaultLocation) "Default Location" else "Your Location",
                     snippet = "Lat: ${location.latitude}, Lng: ${location.longitude}"
                 )
+            }
+        }
+    }
+}
+
+@SuppressLint("MissingPermission")
+private fun addGeofences(context: Context, visitCC: Float, visitUH: Float) {
+    val geofencingClient = LocationServices.getGeofencingClient(context)
+
+    val geofenceList = ArrayList<Geofence>()
+
+    // Campus Center Geofence
+    val campusCenter = LatLng(42.2707, -71.8044)
+    geofenceList.add(
+        Geofence.Builder()
+            .setRequestId("CampusCenter")
+            .setCircularRegion(
+                campusCenter.latitude,
+                campusCenter.longitude,
+                100f // Radius in meters
+            )
+            .setExpirationDuration(Geofence.NEVER_EXPIRE)
+            .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER or Geofence.GEOFENCE_TRANSITION_DWELL)
+            .setLoiteringDelay(5000) // 5 seconds
+            .build()
+    )
+
+    // Unit Hall Geofence
+    val unitHall = LatLng(42.2715, -71.8050)
+    geofenceList.add(
+        Geofence.Builder()
+            .setRequestId("UnitHall")
+            .setCircularRegion(
+                unitHall.latitude,
+                unitHall.longitude,
+                100f // Radius in meters
+            )
+            .setExpirationDuration(Geofence.NEVER_EXPIRE)
+            .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER or Geofence.GEOFENCE_TRANSITION_DWELL)
+            .setLoiteringDelay(5000) // 5 seconds
+            .build()
+    )
+
+    val geofencingRequest = GeofencingRequest.Builder()
+        .setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER or GeofencingRequest.INITIAL_TRIGGER_DWELL)
+        .addGeofences(geofenceList)
+        .build()
+
+    val geofencePendingIntent: PendingIntent by lazy {
+        val intent = Intent(context, GeofenceBroadcastReceiver::class.java)
+        PendingIntent.getBroadcast(
+            context,
+            0,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
+
+    geofencingClient.addGeofences(geofencingRequest, geofencePendingIntent).run {
+        addOnSuccessListener {
+            Toast.makeText(context, "Geofences added", Toast.LENGTH_SHORT).show()
+        }
+        addOnFailureListener {
+            Toast.makeText(context, "Failed to add geofences", Toast.LENGTH_SHORT).show()
+        }
+    }
+}
+
+class GeofenceBroadcastReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        val geofencingEvent = GeofencingEvent.fromIntent(intent)
+        if (geofencingEvent != null) {
+            if (geofencingEvent.hasError()) {
+                val errorMessage = GeofenceStatusCodes.getStatusCodeString(geofencingEvent.errorCode)
+                Log.e("Geofence", errorMessage)
+                return
+            }
+        }
+
+        val geofenceTransition = geofencingEvent?.geofenceTransition
+
+        when (geofenceTransition) {
+            Geofence.GEOFENCE_TRANSITION_ENTER, Geofence.GEOFENCE_TRANSITION_DWELL -> {
+                val triggeringGeofences = geofencingEvent.triggeringGeofences
+                triggeringGeofences?.forEach { geofence ->
+                    when (geofence.requestId) {
+                        "CampusCenter" -> {
+                            Toast.makeText(context, "Entered Campus Center", Toast.LENGTH_SHORT).show()
+                        }
+                        "UnitHall" -> {
+                            Toast.makeText(context, "Entered Unit Hall", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
             }
         }
     }
