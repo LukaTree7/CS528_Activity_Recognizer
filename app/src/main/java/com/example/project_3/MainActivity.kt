@@ -66,6 +66,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+
         setContent {
             Project_3Theme {
                 MotionDetectionScreen(PaddingValues(10.dp))
@@ -125,10 +127,13 @@ fun MotionDetectionScreen(paddingValues: PaddingValues) {
                     val currentTime = System.currentTimeMillis()
 
                     stepCount = newSteps
+                    // Check if steps have increased
+                    val deltaSteps = newSteps - lastStepCount
+                    val deltaTimeSec = (currentTime - lastTimestamp) / 1000.0  // Convert to seconds
 
-                    if (lastTimestamp != 0L) {
-                        val deltaSteps = newSteps - lastStepCount
-                        val deltaTimeSec = (currentTime - lastTimestamp) / 1000
+//                    if (lastTimestamp != 0L) {
+//                        val deltaSteps = newSteps - lastStepCount
+//                        val deltaTimeSec = (currentTime - lastTimestamp) / 1000
 
                         if (deltaTimeSec > 0) {
                             val cadence = deltaSteps / deltaTimeSec
@@ -152,7 +157,7 @@ fun MotionDetectionScreen(paddingValues: PaddingValues) {
                                 if (activityStartTime != currentTime) {
                                     Toast.makeText(
                                         context,
-                                        "You have just ${currentActivity.lowercase()} for $durationString",
+                                        "You have were  ${currentActivity.lowercase()} for $durationString",
                                         Toast.LENGTH_SHORT
                                     ).show()
                                 }
@@ -161,7 +166,7 @@ fun MotionDetectionScreen(paddingValues: PaddingValues) {
                                 activityStartTime = currentTime
                             }
                         }
-                    }
+
 
                     lastStepCount = newSteps
                     lastTimestamp = currentTime
@@ -205,7 +210,8 @@ fun MotionDetectionScreen(paddingValues: PaddingValues) {
         )
 
         Box(
-            modifier = Modifier.height(300.dp)
+
+            modifier = Modifier.height(250.dp)
         ) {
             MapView()
         }
@@ -216,7 +222,8 @@ fun MotionDetectionScreen(paddingValues: PaddingValues) {
                     painter = painterResource(id = R.drawable.still),
                     contentDescription = "Still",
                     modifier = Modifier
-                        .size(300.dp)
+
+                        .size(250.dp)
                         .aspectRatio(1f),
                     contentScale = ContentScale.Crop
                 )
@@ -230,7 +237,7 @@ fun MotionDetectionScreen(paddingValues: PaddingValues) {
                     painter = painterResource(id = R.drawable.running),
                     contentDescription = "Running",
                     modifier = Modifier
-                        .size(300.dp)
+                        .size(250.dp)
                         .aspectRatio(1f),
                     contentScale = ContentScale.Crop
                 )
@@ -244,7 +251,7 @@ fun MotionDetectionScreen(paddingValues: PaddingValues) {
                     painter = painterResource(id = R.drawable.walking),
                     contentDescription = "Walking",
                     modifier = Modifier
-                        .size(300.dp)
+                        .size(250.dp)
                         .aspectRatio(1f),
                     contentScale = ContentScale.Crop
                 )
@@ -258,7 +265,7 @@ fun MotionDetectionScreen(paddingValues: PaddingValues) {
                     painter = painterResource(id = R.drawable.driving),
                     contentDescription = "In Vehicle",
                     modifier = Modifier
-                        .size(300.dp)
+                        .size(250.dp)
                         .aspectRatio(1f),
                     contentScale = ContentScale.Crop
                 )
@@ -326,7 +333,7 @@ fun MapView() {
     Box(
         modifier = Modifier
             .aspectRatio(1f)
-            .height(350.dp)
+            .height(250.dp)
     ) {
         GoogleMap(
             modifier = Modifier.matchParentSize(),
