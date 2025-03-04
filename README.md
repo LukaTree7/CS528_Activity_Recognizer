@@ -7,4 +7,6 @@ Inside it, there should be 2 lines of code:
 
 * MAPS_API_KEY=xxx
 
-Replace the "sdk.dir" with ur local android sdk path
+Replace the "sdk.dir" with ur local android sdk path.
+
+If you wanna test geoFence, just de-comment the home-part codes commented, and replace the home LonLat with ur home's.
