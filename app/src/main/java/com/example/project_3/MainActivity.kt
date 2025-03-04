@@ -56,18 +56,27 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Intent
+import android.content.IntentFilter
+import androidx.compose.runtime.collectAsState
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.google.android.gms.location.*
-import com.google.maps.android.compose.rememberCameraPositionState
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-
         setContent {
             Project_3Theme {
                 MotionDetectionScreen(PaddingValues(10.dp))
@@ -75,9 +84,13 @@ class MainActivity : ComponentActivity() {
         }
 
         if (checkActivityRecognitionPermission()) {
-            //
         } else {
             requestActivityRecognitionPermission()
+        }
+
+        if (checkLocationPermission()) {
+        } else {
+            requestLocationPermission()
         }
     }
 
@@ -96,24 +109,54 @@ class MainActivity : ComponentActivity() {
         )
     }
 
+    private fun checkLocationPermission(): Boolean {
+        return ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun requestLocationPermission() {
+        ActivityCompat.requestPermissions(
+            this,
+            arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+            REQUEST_LOCATION_PERMISSION
+        )
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+    }
+
     companion object {
         private const val REQUEST_ACTIVITY_RECOGNITION_PERMISSION = 1001
+        private const val REQUEST_LOCATION_PERMISSION = 1002
     }
 }
 
 @Composable
-fun MotionDetectionScreen(paddingValues: PaddingValues) {
+fun MotionDetectionScreen(
+    paddingValues: PaddingValues,
+    viewModel: GeofenceViewModel = viewModel(factory = GeofenceViewModelFactory(LocalContext.current))
+) {
     val context = LocalContext.current
     val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
     val stepCounterSensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
 
     var stepCount by remember { mutableStateOf(0f) }
-    var visitCC by remember { mutableStateOf(0f) }
-    var visitUH by remember { mutableStateOf(0f) }
     var currentActivity by remember { mutableStateOf("Still") }
     var activityStartTime by remember { mutableStateOf(System.currentTimeMillis()) }
     var lastStepCount by remember { mutableStateOf(0f) }
     var lastTimestamp by remember { mutableStateOf(0L) }
+    var lastUiUpdateTime by remember { mutableStateOf(0L) }
+
+    val visitCC by viewModel.visitCC.collectAsState()
+    val visitUH by viewModel.visitUH.collectAsState()
+//    val visitHome by viewModel.visitHome.collectAsState()
 
     if (stepCounterSensor == null) {
         Toast.makeText(context, "Step counter sensor not available!", Toast.LENGTH_SHORT).show()
@@ -127,18 +170,19 @@ fun MotionDetectionScreen(paddingValues: PaddingValues) {
                     val currentTime = System.currentTimeMillis()
 
                     stepCount = newSteps
-                    // Check if steps have increased
-                    val deltaSteps = newSteps - lastStepCount
-                    val deltaTimeSec = (currentTime - lastTimestamp) / 1000.0  // Convert to seconds
 
-//                    if (lastTimestamp != 0L) {
-//                        val deltaSteps = newSteps - lastStepCount
-//                        val deltaTimeSec = (currentTime - lastTimestamp) / 1000
+                    if (currentTime - lastUiUpdateTime > 1000) {
+                        lastUiUpdateTime = currentTime
+                    }
+
+                    if (lastTimestamp != 0L) {
+                        val deltaSteps = newSteps - lastStepCount
+                        val deltaTimeSec = (currentTime - lastTimestamp) / 1000
 
                         if (deltaTimeSec > 0) {
                             val cadence = deltaSteps / deltaTimeSec
                             val newStatus = when {
-                                cadence.toDouble() == 0.0 -> "Still"
+                                cadence == 0.0.toFloat() -> "Still"
                                 cadence > 2.5 -> "Running"
                                 cadence > 5 -> "In Vehicle"
                                 else -> "Walking"
@@ -154,19 +198,17 @@ fun MotionDetectionScreen(paddingValues: PaddingValues) {
                                     "$seconds sec"
                                 }
 
-                                if (activityStartTime != currentTime) {
-                                    Toast.makeText(
-                                        context,
-                                        "You have were  ${currentActivity.lowercase()} for $durationString",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                }
+                                Toast.makeText(
+                                    context,
+                                    "You have just ${currentActivity.lowercase()} for $durationString",
+                                    Toast.LENGTH_SHORT
+                                ).show()
 
                                 currentActivity = newStatus
                                 activityStartTime = currentTime
                             }
                         }
-
+                    }
 
                     lastStepCount = newSteps
                     lastTimestamp = currentTime
@@ -187,9 +229,31 @@ fun MotionDetectionScreen(paddingValues: PaddingValues) {
         }
     }
 
-//     Add Geofence
+    // Add Geofence
     LaunchedEffect(Unit) {
-        addGeofences(context, visitCC, visitUH)
+        addGeofences(
+            context,
+            visitCC,
+            visitUH,
+//            visitHome
+        )
+    }
+
+    LaunchedEffect(Unit) {
+        val broadcastReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                when (intent?.getStringExtra("location")) {
+                    "CampusCenter" -> viewModel.incrementVisitCC()
+                    "UnitHall" -> viewModel.incrementVisitUH()
+//                    "Home" -> viewModel.incrementVisitHome()
+                }
+            }
+        }
+        LocalBroadcastManager.getInstance(context).registerReceiver(
+            broadcastReceiver,
+            IntentFilter("geofence_transition")
+        )
+
     }
 
     Column(
@@ -205,13 +269,15 @@ fun MotionDetectionScreen(paddingValues: PaddingValues) {
         Text(
             text = "Visit to Unit Hall geoFence: ${visitUH.toInt()}", fontSize = 15.sp
         )
+//        Text(
+//            text = "Visit to Home geoFence: ${visitHome.toInt()}", fontSize = 15.sp
+//        )
         Text(
             text = "Steps taken since app started: ${stepCount.toInt()}", fontSize = 15.sp
         )
 
         Box(
-
-            modifier = Modifier.height(250.dp)
+            modifier = Modifier.height(300.dp)
         ) {
             MapView()
         }
@@ -222,8 +288,7 @@ fun MotionDetectionScreen(paddingValues: PaddingValues) {
                     painter = painterResource(id = R.drawable.still),
                     contentDescription = "Still",
                     modifier = Modifier
-
-                        .size(250.dp)
+                        .size(300.dp)
                         .aspectRatio(1f),
                     contentScale = ContentScale.Crop
                 )
@@ -237,7 +302,7 @@ fun MotionDetectionScreen(paddingValues: PaddingValues) {
                     painter = painterResource(id = R.drawable.running),
                     contentDescription = "Running",
                     modifier = Modifier
-                        .size(250.dp)
+                        .size(300.dp)
                         .aspectRatio(1f),
                     contentScale = ContentScale.Crop
                 )
@@ -251,7 +316,7 @@ fun MotionDetectionScreen(paddingValues: PaddingValues) {
                     painter = painterResource(id = R.drawable.walking),
                     contentDescription = "Walking",
                     modifier = Modifier
-                        .size(250.dp)
+                        .size(300.dp)
                         .aspectRatio(1f),
                     contentScale = ContentScale.Crop
                 )
@@ -265,7 +330,7 @@ fun MotionDetectionScreen(paddingValues: PaddingValues) {
                     painter = painterResource(id = R.drawable.driving),
                     contentDescription = "In Vehicle",
                     modifier = Modifier
-                        .size(250.dp)
+                        .size(300.dp)
                         .aspectRatio(1f),
                     contentScale = ContentScale.Crop
                 )
@@ -312,9 +377,6 @@ fun MapView() {
 
             fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, Looper.getMainLooper())
 
-//            onDispose {
-//                fusedLocationClient.removeLocationUpdates(locationCallback)
-//            }
         } else {
             currentLocation = defaultLocation
         }
@@ -333,7 +395,7 @@ fun MapView() {
     Box(
         modifier = Modifier
             .aspectRatio(1f)
-            .height(250.dp)
+            .height(350.dp)
     ) {
         GoogleMap(
             modifier = Modifier.matchParentSize(),
@@ -351,42 +413,63 @@ fun MapView() {
 }
 
 @SuppressLint("MissingPermission")
-private fun addGeofences(context: Context, visitCC: Float, visitUH: Float) {
+private fun addGeofences(
+    context: Context,
+    visitCC: Float,
+    visitUH: Float,
+//    visitHome: Float
+) {
     val geofencingClient = LocationServices.getGeofencingClient(context)
 
     val geofenceList = ArrayList<Geofence>()
 
     // Campus Center Geofence
-    val campusCenter = LatLng(42.2707, -71.8044)
+    val campusCenter = LatLng(42.27470, -71.80822)
     geofenceList.add(
         Geofence.Builder()
             .setRequestId("CampusCenter")
             .setCircularRegion(
                 campusCenter.latitude,
                 campusCenter.longitude,
-                100f // Radius in meters
+                20f
             )
             .setExpirationDuration(Geofence.NEVER_EXPIRE)
             .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER or Geofence.GEOFENCE_TRANSITION_DWELL)
-            .setLoiteringDelay(5000) // 5 seconds
+            .setLoiteringDelay(5000)
             .build()
     )
 
     // Unit Hall Geofence
-    val unitHall = LatLng(42.2715, -71.8050)
+    val unitHall = LatLng(42.27366, -71.80658)
     geofenceList.add(
         Geofence.Builder()
             .setRequestId("UnitHall")
             .setCircularRegion(
                 unitHall.latitude,
                 unitHall.longitude,
-                100f // Radius in meters
+                20f
             )
             .setExpirationDuration(Geofence.NEVER_EXPIRE)
             .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER or Geofence.GEOFENCE_TRANSITION_DWELL)
-            .setLoiteringDelay(5000) // 5 seconds
+            .setLoiteringDelay(5000)
             .build()
     )
+
+//    // home test, u can change to ur place longitude & latitude to test
+//    val home = LatLng(42.27038, -71.82356)
+//    geofenceList.add(
+//        Geofence.Builder()
+//            .setRequestId("Home")
+//            .setCircularRegion(
+//                home.latitude,
+//                home.longitude,
+//                20f
+//            )
+//            .setExpirationDuration(Geofence.NEVER_EXPIRE)
+//            .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER or Geofence.GEOFENCE_TRANSITION_DWELL)
+//            .setLoiteringDelay(5000)
+//            .build()
+//    )
 
     val geofencingRequest = GeofencingRequest.Builder()
         .setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER or GeofencingRequest.INITIAL_TRIGGER_DWELL)
@@ -413,6 +496,40 @@ private fun addGeofences(context: Context, visitCC: Float, visitUH: Float) {
     }
 }
 
+class GeofenceViewModel(context: Context) : ViewModel() {
+    private val sharedPreferences = context.getSharedPreferences("GeofencePrefs", Context.MODE_PRIVATE)
+
+    private val _visitCC = MutableStateFlow(sharedPreferences.getFloat("visitCC", 0f))
+    val visitCC: StateFlow<Float> = _visitCC
+
+    private val _visitUH = MutableStateFlow(sharedPreferences.getFloat("visitUH", 0f))
+    val visitUH: StateFlow<Float> = _visitUH
+
+//    private val _visitHome = MutableStateFlow(sharedPreferences.getFloat("visitHome", 0f))
+//    val visitHome: StateFlow<Float> = _visitHome
+
+    fun incrementVisitCC() {
+        viewModelScope.launch {
+            _visitCC.value += 1f
+            sharedPreferences.edit().putFloat("visitCC", _visitCC.value).apply()
+        }
+    }
+
+    fun incrementVisitUH() {
+        viewModelScope.launch {
+            _visitUH.value += 1f
+            sharedPreferences.edit().putFloat("visitUH", _visitUH.value).apply()
+        }
+    }
+
+//    fun incrementVisitHome() {
+//        viewModelScope.launch {
+//            _visitHome.value += 1f
+//            sharedPreferences.edit().putFloat("visitHome", _visitHome.value).apply()
+//        }
+//    }
+}
+
 class GeofenceBroadcastReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val geofencingEvent = GeofencingEvent.fromIntent(intent)
@@ -430,16 +547,34 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
             Geofence.GEOFENCE_TRANSITION_ENTER, Geofence.GEOFENCE_TRANSITION_DWELL -> {
                 val triggeringGeofences = geofencingEvent.triggeringGeofences
                 triggeringGeofences?.forEach { geofence ->
+                    val intent = Intent("geofence_transition")
                     when (geofence.requestId) {
                         "CampusCenter" -> {
-                            Toast.makeText(context, "Entered Campus Center", Toast.LENGTH_SHORT).show()
+                            intent.putExtra("location", "CampusCenter")
+                            Toast.makeText(context, "You have been inside the Campus Center geofence for 5 seconds, incrementing counter", Toast.LENGTH_SHORT).show()
                         }
                         "UnitHall" -> {
-                            Toast.makeText(context, "Entered Unit Hall", Toast.LENGTH_SHORT).show()
+                            intent.putExtra("location", "UnitHall")
+                            Toast.makeText(context, "You have been inside the Unity Hall geofence for 5 seconds, incrementing counter", Toast.LENGTH_SHORT).show()
                         }
+//                        "Home" -> {
+//                            intent.putExtra("location", "Home")
+//                            Toast.makeText(context, "You have been inside the Home geofence for 5 seconds, incrementing counter", Toast.LENGTH_SHORT).show()
+//                        }
                     }
+                    LocalBroadcastManager.getInstance(context).sendBroadcast(intent)
                 }
             }
         }
+    }
+}
+
+class GeofenceViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(GeofenceViewModel::class.java)) {
+            return GeofenceViewModel(context) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
     }
 }
