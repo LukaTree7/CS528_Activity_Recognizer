@@ -13,15 +13,10 @@ This project used code from:
 * https://developer.android.com/guide/topics/ui/notifiers/toasts
 
 Special instructions to run our submission: You need to connect WIFI to access Google Map Service.
-
 Before running the project, make sure you have the file "local.properties" under the project_3 folder.
-
 Inside it, there should be 2 lines of code:
-
 * sdk.dir=xxx\\Android\\Sdk
-
 * MAPS_API_KEY=xxx
-
 Replace the "sdk.dir" with ur local android sdk path.
 
 Phone tested on: HUAWEI ANE-AL00 Android 9 Smartphone ( Deployed with Gspace for Google play service )
