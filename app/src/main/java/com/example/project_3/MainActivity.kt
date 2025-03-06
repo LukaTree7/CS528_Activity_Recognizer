@@ -177,9 +177,10 @@ fun MotionDetectionScreen(
                             val cadence = deltaSteps / deltaTimeSec
                             val newStatus = when {
                                 cadence == 0.0.toFloat() -> "Still"
-                                cadence > 2.5 -> "Running"
-                                cadence > 5 -> "In Vehicle"
-                                else -> "Walking"
+                                cadence > 7.0 -> "In Vehicle"
+                                cadence in 2.5 .. 7.0 -> "Running"
+                                cadence in 1.0 .. 2.5 -> "Walking"
+                                else -> "Still"
                             }
                             if (newStatus != currentActivity) {
                                 val durationMillis = currentTime - activityStartTime
