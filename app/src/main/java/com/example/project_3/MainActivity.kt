@@ -152,11 +152,9 @@ fun MotionDetectionScreen(
     var activityStartTime by remember { mutableStateOf(System.currentTimeMillis()) }
     var lastStepCount by remember { mutableStateOf(0f) }
     var lastTimestamp by remember { mutableStateOf(0L) }
-    var lastUiUpdateTime by remember { mutableStateOf(0L) }
 
     val visitCC by viewModel.visitCC.collectAsState()
     val visitUH by viewModel.visitUH.collectAsState()
-//    val visitHome by viewModel.visitHome.collectAsState()
 
     if (stepCounterSensor == null) {
         Toast.makeText(context, "Step counter sensor not available!", Toast.LENGTH_SHORT).show()
@@ -170,10 +168,6 @@ fun MotionDetectionScreen(
                     val currentTime = System.currentTimeMillis()
 
                     stepCount = newSteps
-
-                    if (currentTime - lastUiUpdateTime > 1000) {
-                        lastUiUpdateTime = currentTime
-                    }
 
                     if (lastTimestamp != 0L) {
                         val deltaSteps = newSteps - lastStepCount
@@ -212,7 +206,6 @@ fun MotionDetectionScreen(
 
                     lastStepCount = newSteps
                     lastTimestamp = currentTime
-                    stepCount = newSteps
                 }
             }
 
@@ -235,7 +228,6 @@ fun MotionDetectionScreen(
             context,
             visitCC,
             visitUH,
-//            visitHome
         )
     }
 
@@ -245,7 +237,6 @@ fun MotionDetectionScreen(
                 when (intent?.getStringExtra("location")) {
                     "CampusCenter" -> viewModel.incrementVisitCC()
                     "UnitHall" -> viewModel.incrementVisitUH()
-//                    "Home" -> viewModel.incrementVisitHome()
                 }
             }
         }
@@ -253,7 +244,6 @@ fun MotionDetectionScreen(
             broadcastReceiver,
             IntentFilter("geofence_transition")
         )
-
     }
 
     Column(
@@ -269,9 +259,6 @@ fun MotionDetectionScreen(
         Text(
             text = "Visit to Unit Hall geoFence: ${visitUH.toInt()}", fontSize = 15.sp
         )
-//        Text(
-//            text = "Visit to Home geoFence: ${visitHome.toInt()}", fontSize = 15.sp
-//        )
         Text(
             text = "Steps taken since app started: ${stepCount.toInt()}", fontSize = 15.sp
         )
