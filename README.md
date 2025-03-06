@@ -15,6 +15,7 @@ This project used code from:
 Special instructions to run our submission: We tried different ways ( Google RA, Type_Step_Detector&Counter, Type_Accelerometer, 4-Steps modification ) to increase the accuracy and reduce the delay in activity recognition. But in the end, there still exist high delay between Still and Walking.
 
 Phone tested on: HUAWEI ANE-AL00 Android 9 Smartphone ( Deployed with Gspace for Google play service )
+
 Computer Tested on: Lenovo Legion, 3.8 GHz CPU, 16GB RAM
 
 Tips: You need to connect WIFI to access Google Map Service.
