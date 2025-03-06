@@ -23,4 +23,4 @@ Phone tested on: HUAWEI ANE-AL00 Android 9 Smartphone ( Deployed with Gspace for
 
 Computer Tested on: Lenovo Legion, 3.8 GHz CPU, 16GB RAM
 
-( We tried different ways ( Google RA, Type_Step_Detector&Counter, Type_Accelerometer, 4-Steps modification ) to increase the accuracy and reduce the delay in activity recognition. But in the end, there still exist high delay between Still and Walking. )
+( We tried different ways ( Google RA, Type_Step_Detector&Counter, Type_Accelerometer, 4-Steps modification ) to increase the accuracy and reduce the delay in activity recognition. But in the end, may due to the hardware sensor problem, there still exist high delay between Still and Walking. )
