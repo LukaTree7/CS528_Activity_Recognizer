@@ -411,14 +411,14 @@ private fun addGeofences(
     val geofenceList = ArrayList<Geofence>()
 
     // Campus Center Geofence
-    val campusCenter = LatLng(42.27470, -71.80822)
+    val campusCenter = LatLng(42.27470, -71.80834)
     geofenceList.add(
         Geofence.Builder()
             .setRequestId("CampusCenter")
             .setCircularRegion(
                 campusCenter.latitude,
                 campusCenter.longitude,
-                20f
+                50f
             )
             .setExpirationDuration(Geofence.NEVER_EXPIRE)
             .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER or Geofence.GEOFENCE_TRANSITION_DWELL)
@@ -434,7 +434,7 @@ private fun addGeofences(
             .setCircularRegion(
                 unitHall.latitude,
                 unitHall.longitude,
-                20f
+                50f
             )
             .setExpirationDuration(Geofence.NEVER_EXPIRE)
             .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER or Geofence.GEOFENCE_TRANSITION_DWELL)
@@ -546,7 +546,7 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
                         }
 //                        "Home" -> {
 //                            intent.putExtra("location", "Home")
-//                            Toast.makeText(context, "You have been inside the Home geofence for 5 seconds, incrementing counter", Toast.LENGTH_SHORT).show()
+//                            Toast.makeText(context, "You have been inside Home geofence for 5 seconds, incrementing counter", Toast.LENGTH_SHORT).show()
 //                        }
                     }
                     LocalBroadcastManager.getInstance(context).sendBroadcast(intent)
