@@ -1,8 +1,11 @@
 # CS528_Activity_Recognizer
 
 Lukatree7, Fang, Shucheng
+
 SharviGhogale, Ghogale, Sharvi
+
 yang-yilu, Yang, Yilu
+
 Sureshvarthya12, Varthya, Suresh
 
 This project used code from: 
