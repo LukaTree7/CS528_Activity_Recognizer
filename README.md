@@ -17,7 +17,9 @@ Special instructions to run our submission: We tried different ways ( Google RA,
 Phone tested on: HUAWEI ANE-AL00 Android 9 Smartphone ( Deployed with Gspace for Google play service )
 Computer Tested on: Lenovo Legion, 3.8 GHz CPU, 16GB RAM
 
-Tips: Before running the project, make sure you have the file "local.properties" under the project_3 folder.
+Tips: You need to connect WIFI to access Google Map Service.
+
+Before running the project, make sure you have the file "local.properties" under the project_3 folder.
 
 Inside it, there should be 2 lines of code:
 
