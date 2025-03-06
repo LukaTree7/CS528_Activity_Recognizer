@@ -14,6 +14,8 @@ This project used code from:
 * https://developer.android.com/develop/sensors-and-location/location/geofencing
 * https://developers.google.com/maps/documentation/android-sdk/start?hl=zh-cn
 * https://developer.android.com/guide/topics/ui/notifiers/toasts
+* TA video
+* Class Slides
 
 Special instructions to run our submission: You need to connect WIFI to access Google Map Service.
 Before running the project, make sure you have the file "local.properties" under the project_3 folder.
